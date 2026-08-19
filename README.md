@@ -1,6 +1,12 @@
 # chrome-agent
 
 > **Fork note:** This fork additionally detects Vivaldi as a browser (see `_platform_candidates()` in `src/chrome_agent/launcher.py`).
+>
+> Install this fork directly from GitHub via pipx:
+>
+> ```bash
+> pipx install git+https://github.com/pintman/vivaldi-agent.git
+> ```
 
 [![PyPI version](https://img.shields.io/pypi/v/chrome-agent)](https://pypi.org/project/chrome-agent/)
 [![PyPI downloads](https://img.shields.io/pepy/dt/chrome-agent)](https://pepy.tech/projects/chrome-agent)
