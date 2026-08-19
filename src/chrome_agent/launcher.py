@@ -61,6 +61,7 @@ def _platform_candidates() -> list[str]:
         return [
             "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
             "/Applications/Chromium.app/Contents/MacOS/Chromium",
+            "/Applications/Vivaldi.app/Contents/MacOS/Vivaldi",
         ]
     elif sys.platform == "win32":
         return [

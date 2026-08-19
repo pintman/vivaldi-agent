@@ -1,5 +1,7 @@
 # chrome-agent
 
+> **Fork note:** This fork additionally detects Vivaldi as a browser (see `_platform_candidates()` in `src/chrome_agent/launcher.py`).
+
 [![PyPI version](https://img.shields.io/pypi/v/chrome-agent)](https://pypi.org/project/chrome-agent/)
 [![PyPI downloads](https://img.shields.io/pepy/dt/chrome-agent)](https://pepy.tech/projects/chrome-agent)
 [![Python versions](https://img.shields.io/pypi/pyversions/chrome-agent)](https://pypi.org/project/chrome-agent/)
