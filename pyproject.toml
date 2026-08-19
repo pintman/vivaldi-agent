@@ -1,5 +1,5 @@
 [project]
-name = "vivaldi-agent"
+name = "chrome-agent"
 version = "0.5.7"
 description = "CLI tool for AI agents to observe and interact with Chrome via CDP"
 readme = "README.md"
@@ -36,9 +36,6 @@ Issues = "https://github.com/captivus/chrome-agent/issues"
 [build-system]
 requires = ["uv_build>=0.9.17,<0.10.0"]
 build-backend = "uv_build"
-
-[tool.uv.build-backend]
-module-name = "chrome_agent"
 
 [dependency-groups]
 dev = [
