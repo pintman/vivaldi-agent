@@ -6,8 +6,10 @@ No Playwright dependency -- uses subprocess directly.
 """
 
 import asyncio
+import glob
 import json
 import logging
+import ntpath
 import os
 import shutil
 import subprocess
@@ -47,16 +49,39 @@ def find_chrome_binary() -> str | None:
     return None
 
 
+def _is_wsl(*, proc_version_path: str = "/proc/version") -> bool:
+    """Detect whether this process is running inside Windows Subsystem for Linux.
+
+    WSL reports sys.platform == "linux" like any other Linux distro, so the
+    Windows-host browsers (reachable under /mnt/c) must be probed explicitly.
+    """
+    if os.environ.get("WSL_DISTRO_NAME") or os.environ.get("WSL_INTEROP"):
+        return True
+    try:
+        with open(proc_version_path) as f:
+            return "microsoft" in f.read().lower()
+    except OSError:
+        return False
+
+
 def _platform_candidates() -> list[str]:
-    """Return platform-specific Chrome/Chromium binary paths."""
+    """Return platform-specific Chrome/Chromium/Vivaldi binary paths."""
     if sys.platform == "linux":
-        return [
+        candidates = [
             "/usr/bin/google-chrome",
             "/usr/bin/google-chrome-stable",
             "/usr/bin/chromium-browser",
             "/usr/bin/chromium",
             "/snap/bin/chromium",
         ]
+        if _is_wsl():
+            # Vivaldi itself runs on the Windows host, not inside the WSL
+            # instance; it's only reachable through the /mnt/c mount.
+            candidates += sorted(glob.glob(
+                "/mnt/c/Users/*/AppData/Local/Vivaldi/Application/vivaldi.exe"
+            ))
+            candidates.append("/mnt/c/Program Files/Vivaldi/Application/vivaldi.exe")
+        return candidates
     elif sys.platform == "darwin":
         return [
             "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -64,10 +89,18 @@ def _platform_candidates() -> list[str]:
             "/Applications/Vivaldi.app/Contents/MacOS/Vivaldi",
         ]
     elif sys.platform == "win32":
-        return [
+        candidates = [
             r"C:\Program Files\Google\Chrome\Application\chrome.exe",
             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files\Vivaldi\Application\vivaldi.exe",
         ]
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        if local_appdata:
+            # ntpath (not os.path) so this builds a correct Windows path even
+            # when sys.platform is monkeypatched to "win32" in tests on a
+            # non-Windows host.
+            candidates.append(ntpath.join(local_appdata, "Vivaldi", "Application", "vivaldi.exe"))
+        return candidates
     return []
 
 

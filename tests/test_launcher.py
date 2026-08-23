@@ -12,6 +12,7 @@ import json
 import os
 import shutil
 import signal
+import sys
 import tempfile
 
 import pytest
@@ -20,6 +21,8 @@ from chrome_agent.connection import check_cdp_port
 from chrome_agent.launcher import (
     BrowserNotFoundError,
     _SESSION_ROOT,
+    _is_wsl,
+    _platform_candidates,
     cleanup_sessions,
     find_chrome_binary,
     launch_browser,
@@ -77,6 +80,68 @@ def test_find_chrome_binary():
     assert binary is not None, "No Chrome binary found on this system"
     assert os.path.isfile(binary)
     assert os.access(binary, os.X_OK)
+
+
+def test_is_wsl_true_via_env_var(monkeypatch):
+    """WSL_DISTRO_NAME alone is enough to detect WSL."""
+    monkeypatch.setenv("WSL_DISTRO_NAME", "Ubuntu")
+    monkeypatch.delenv("WSL_INTEROP", raising=False)
+    assert _is_wsl(proc_version_path="/nonexistent") is True
+
+
+def test_is_wsl_true_via_proc_version(monkeypatch, tmp_path):
+    """Falls back to /proc/version containing 'microsoft' when no env var is set."""
+    monkeypatch.delenv("WSL_DISTRO_NAME", raising=False)
+    monkeypatch.delenv("WSL_INTEROP", raising=False)
+    proc_version = tmp_path / "version"
+    proc_version.write_text("Linux version 5.15.0 (Microsoft@Microsoft.com)\n")
+    assert _is_wsl(proc_version_path=str(proc_version)) is True
+
+
+def test_is_wsl_false_on_plain_linux(monkeypatch):
+    """Neither env vars nor /proc/version indicate WSL."""
+    monkeypatch.delenv("WSL_DISTRO_NAME", raising=False)
+    monkeypatch.delenv("WSL_INTEROP", raising=False)
+    assert _is_wsl(proc_version_path="/nonexistent") is False
+
+
+def test_platform_candidates_wsl_includes_vivaldi(monkeypatch):
+    """Under WSL, Windows-host Vivaldi paths under /mnt/c are added."""
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr("chrome_agent.launcher._is_wsl", lambda: True)
+    monkeypatch.setattr(
+        "chrome_agent.launcher.glob.glob",
+        lambda pattern: ["/mnt/c/Users/alice/AppData/Local/Vivaldi/Application/vivaldi.exe"],
+    )
+    candidates = _platform_candidates()
+    assert "/mnt/c/Users/alice/AppData/Local/Vivaldi/Application/vivaldi.exe" in candidates
+    assert "/mnt/c/Program Files/Vivaldi/Application/vivaldi.exe" in candidates
+
+
+def test_platform_candidates_plain_linux_excludes_vivaldi(monkeypatch):
+    """Without WSL, no /mnt/c paths are probed."""
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr("chrome_agent.launcher._is_wsl", lambda: False)
+    candidates = _platform_candidates()
+    assert not any("vivaldi" in c.lower() for c in candidates)
+
+
+def test_platform_candidates_win32_includes_vivaldi(monkeypatch):
+    """Native Windows candidates include the Program Files and LOCALAPPDATA paths."""
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", r"C:\Users\alice\AppData\Local")
+    candidates = _platform_candidates()
+    assert r"C:\Program Files\Vivaldi\Application\vivaldi.exe" in candidates
+    assert r"C:\Users\alice\AppData\Local\Vivaldi\Application\vivaldi.exe" in candidates
+
+
+def test_platform_candidates_win32_without_local_appdata(monkeypatch):
+    """LOCALAPPDATA-based path is skipped when the env var is unset."""
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    candidates = _platform_candidates()
+    assert r"C:\Program Files\Vivaldi\Application\vivaldi.exe" in candidates
+    assert not any("AppData" in c for c in candidates)
 
 
 # ---------------------------------------------------------------------------

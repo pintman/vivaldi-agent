@@ -1,6 +1,6 @@
 # chrome-agent
 
-> **Fork note:** This fork additionally detects Vivaldi as a browser (see `_platform_candidates()` in `src/chrome_agent/launcher.py`).
+> **Fork note:** This fork additionally detects Vivaldi as a browser on macOS, native Windows, and Windows hosts reached from WSL via `/mnt/c` (see `_platform_candidates()` in `src/chrome_agent/launcher.py`).
 >
 > Install this fork directly from GitHub via pipx:
 >
